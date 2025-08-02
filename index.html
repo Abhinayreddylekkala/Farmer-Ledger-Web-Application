@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmer Ledger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 50; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 0.5rem; width: 90%; max-width: 500px; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 8px; color: white; z-index: 100; opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Login View -->
+    <div id="login-view" class="flex flex-col items-center justify-center min-h-screen">
+        <div class="bg-white p-8 rounded-lg shadow-md text-center">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Farmer Ledger</h1>
+            <p class="text-gray-600 mb-6">Sign in to manage your data securely.</p>
+            <button id="google-signin-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center w-full">
+                <svg class="w-5 h-5 mr-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48px" height="48px"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.519-3.487-11.187-8.264l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.99,36.626,44,30.638,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                Sign in with Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Main App View (hidden by default) -->
+    <div id="app-container" class="max-w-4xl mx-auto p-4 hidden">
+        <header class="bg-white shadow-md rounded-lg p-4 mb-4 flex justify-between items-center">
+            <div><h1 class="text-2xl font-bold text-gray-800">Farmer Ledger</h1><p id="user-id-display" class="text-xs text-gray-500 mt-1"></p></div>
+            <div id="auth-container"><button id="logout-button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg flex items-center"><i data-lucide="log-out" class="w-4 h-4 mr-2"></i><span>Logout</span></button></div>
+        </header>
+
+        <main id="main-content">
+            <!-- Farmer List View -->
+            <div id="farmer-list-view">
+                <div class="bg-white shadow-md rounded-lg p-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                        <div class="relative w-full sm:w-auto flex-grow">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                            <input type="text" id="search-farmer" placeholder="Search farmers..." class="pl-10 p-2 border rounded-lg w-full">
+                        </div>
+                        <button id="add-farmer-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg flex items-center w-full sm:w-auto justify-center">
+                            <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i><span>Add Farmer</span>
+                        </button>
+                    </div>
+                    <div id="farmer-list" class="space-y-2"><p class="text-gray-500 text-center py-4">Loading farmers...</p></div>
+                </div>
+            </div>
+
+            <!-- Ledger View -->
+            <div id="ledger-view" class="hidden">
+                 <div class="bg-white shadow-md rounded-lg p-4">
+                    <button id="back-to-farmers-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg mb-4 flex items-center"><i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i><span>Back</span></button>
+                    <h2 id="ledger-farmer-name" class="text-2xl font-bold text-gray-800"></h2>
+                    <p id="ledger-farmer-phone" class="text-gray-600 mb-6"></p>
+
+                    <!-- Add Transaction Form -->
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3">Add New Transaction</h3>
+                        <form id="transaction-form" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label for="transaction-date" class="block text-sm font-medium text-gray-700">Date</label><input type="date" id="transaction-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></div>
+                                <div><label for="product-type" class="block text-sm font-medium text-gray-700">Product Type</label><select id="product-type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"><option value="chilli">Chilli</option><option value="tomato">Tomato</option></select></div>
+                            </div>
+                             <div><label for="transaction-rate" id="rate-label" class="block text-sm font-medium text-gray-700">Rate (per Manumulu)</label><input type="number" step="any" id="transaction-rate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required></div>
+                            <div id="chilli-fields"><label for="transaction-bags" class="block text-sm font-medium text-gray-700">Weight of Each Bag (in Kgs)</label><textarea id="transaction-bags" rows="3" placeholder="Enter weights separated by space, e.g., 50.5 52 49.75" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea></div>
+                            <div id="tomato-fields" class="hidden"><label for="transaction-boxes" class="block text-sm font-medium text-gray-700">Number of Boxes</label><input type="number" id="transaction-boxes" placeholder="e.g., 8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></div>
+                            <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"><i data-lucide="save" class="w-4 h-4 mr-2"></i><span>Save Transaction</span></button>
+                        </form>
+                    </div>
+
+                    <!-- Summary & Settle Button -->
+                    <div id="ledger-summary" class="mb-6 pt-4 border-t-2">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3">Outstanding Balance</h3>
+                        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg text-center mb-4">
+                           <p id="summary-amount" class="text-3xl font-bold">₹0.00</p>
+                        </div>
+                        <button id="settle-accounts-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center text-base"><i data-lucide="check-circle" class="w-5 h-5 mr-2"></i><span>Record Payment & Settle Balance</span></button>
+                    </div>
+
+                    <!-- Transaction List -->
+                    <div id="transaction-list-container">
+                        <div class="flex justify-between items-center mb-3 border-t pt-4">
+                            <h3 class="text-lg font-semibold text-gray-700">Transaction History</h3>
+                            <button id="generate-slip-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"><i data-lucide="receipt" class="w-4 h-4 mr-2"></i><span>Copy Full Slip</span></button>
+                        </div>
+                        <div id="transaction-list" class="space-y-3"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="farmer-modal" class="modal-backdrop hidden"><div class="modal-content"><h3 id="farmer-modal-title" class="text-xl font-semibold mb-4">Add New Farmer</h3><form id="farmer-form"><input type="hidden" id="farmer-id"><div class="mb-4"><label for="farmer-name" class="block text-sm font-medium text-gray-700">Farmer Name</label><input type="text" id="farmer-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required></div><div class="mb-4"><label for="farmer-phone" class="block text-sm font-medium text-gray-700">Phone Number</label><input type="tel" id="farmer-phone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></div><div class="flex justify-end space-x-3"><button type="button" id="cancel-farmer-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancel</button><button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Save</button></div></form></div></div>
+    <div id="edit-transaction-modal" class="modal-backdrop hidden"><div class="modal-content"><h3 class="text-xl font-semibold mb-4">Edit Transaction</h3><form id="edit-transaction-form" class="space-y-4"><input type="hidden" id="edit-transaction-id"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label for="edit-transaction-date" class="block text-sm font-medium text-gray-700">Date</label><input type="date" id="edit-transaction-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></div><div><label for="edit-product-type" class="block text-sm font-medium text-gray-700">Product Type</label><input type="text" id="edit-product-type-display" class="mt-1 block w-full rounded-md border-gray-200 bg-gray-200 shadow-sm p-2 border" readonly></div></div><div><label for="edit-transaction-rate" id="edit-rate-label" class="block text-sm font-medium text-gray-700">Rate</label><input type="number" step="any" id="edit-transaction-rate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required></div><div id="edit-chilli-fields"><label for="edit-transaction-bags" class="block text-sm font-medium text-gray-700">Weight of Each Bag (in Kgs)</label><textarea id="edit-transaction-bags" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea></div><div id="edit-tomato-fields" class="hidden"><label for="edit-transaction-boxes" class="block text-sm font-medium text-gray-700">Number of Boxes</label><input type="number" id="edit-transaction-boxes" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></div><div class="flex justify-end space-x-3"><button type="button" id="cancel-edit-tx-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancel</button><button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Save Changes</button></div></form></div></div>
+    <div id="view-weights-modal" class="modal-backdrop hidden"><div class="modal-content"><h3 class="text-xl font-semibold mb-4">Bag Weights</h3><div id="weights-display" class="bg-gray-100 p-3 rounded-md mb-4 max-h-48 overflow-y-auto border"></div><div class="flex justify-end space-x-3"><button type="button" id="copy-weights-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Copy</button><button type="button" id="close-weights-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Close</button></div></div></div>
+    <div id="toast-notification" class="toast bg-gray-800"></div>
+
+    <script type="module">
+    const firebaseConfig = {
+    apiKey: "AIzaSyAp3MO5IiEYzco7qZGANIVKAQQDIGjii6k",
+    authDomain: "tomato-and-chilli-business.firebaseapp.com",
+    projectId: "tomato-and-chilli-business",
+    storageBucket: "tomato-and-chilli-business.firebasestorage.app",
+    messagingSenderId: "646922809996",
+    appId: "1:646922809996:web:efa2c8cee08ff0b93d81a9",
+    measurementId: "G-M2XLYM8K0K"
+    };
+        const appId = firebaseConfig.appId;
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where, doc, onSnapshot, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const MANUMULU_DIVISOR = 11.25;
+        let currentUserId = null, currentFarmerId = null, transactionsUnsubscribe = null, farmersUnsubscribe = null, currentTransactions = [], allFarmers = [];
+        
+        const ui = {
+            loginView: document.getElementById('login-view'),
+            appContainer: document.getElementById('app-container'),
+            googleSigninBtn: document.getElementById('google-signin-btn'),
+            farmerListView: document.getElementById('farmer-list-view'),
+            ledgerView: document.getElementById('ledger-view'),
+            farmerList: document.getElementById('farmer-list'),
+            searchFarmerInput: document.getElementById('search-farmer'),
+            transactionList: document.getElementById('transaction-list'),
+            addFarmerBtn: document.getElementById('add-farmer-btn'),
+            farmerModal: document.getElementById('farmer-modal'),
+            cancelFarmerBtn: document.getElementById('cancel-farmer-btn'),
+            farmerForm: document.getElementById('farmer-form'),
+            backToFarmersBtn: document.getElementById('back-to-farmers-btn'),
+            transactionForm: document.getElementById('transaction-form'),
+            generateSlipBtn: document.getElementById('generate-slip-btn'),
+            settleAccountsBtn: document.getElementById('settle-accounts-btn'),
+            userIdDisplay: document.getElementById('user-id-display'),
+            logoutButton: document.getElementById('logout-button'),
+            editTransactionModal: document.getElementById('edit-transaction-modal'),
+            cancelEditTxBtn: document.getElementById('cancel-edit-tx-btn'),
+            editTransactionForm: document.getElementById('edit-transaction-form'),
+            viewWeightsModal: document.getElementById('view-weights-modal'),
+            closeWeightsBtn: document.getElementById('close-weights-btn'),
+            copyWeightsBtn: document.getElementById('copy-weights-btn'),
+            productType: document.getElementById('product-type'),
+            chilliFields: document.getElementById('chilli-fields'),
+            tomatoFields: document.getElementById('tomato-fields'),
+            rateLabel: document.getElementById('rate-label'),
+            editChilliFields: document.getElementById('edit-chilli-fields'),
+            editTomatoFields: document.getElementById('edit-tomato-fields'),
+            editRateLabel: document.getElementById('edit-rate-label'),
+        };
+
+        function showToast(message, duration = 3000) { const t = document.getElementById('toast-notification'); t.textContent = message; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), duration); }
+        
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                currentUserId = user.uid;
+                ui.userIdDisplay.textContent = `Signed in as: ${user.displayName || user.email}`;
+                ui.loginView.classList.add('hidden');
+                ui.appContainer.classList.remove('hidden');
+                loadFarmers();
+            } else {
+                currentUserId = null;
+                ui.loginView.classList.remove('hidden');
+                ui.appContainer.classList.add('hidden');
+                if (farmersUnsubscribe) farmersUnsubscribe();
+                if (transactionsUnsubscribe) transactionsUnsubscribe();
+            }
+        });
+
+        ui.googleSigninBtn.addEventListener('click', () => {
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider).catch(error => {
+                console.error("Google Sign-in Error:", error);
+                showToast("Could not sign in with Google. Please try again.");
+            });
+        });
+
+        ui.logoutButton.addEventListener('click', () => signOut(auth));
+        ui.backToFarmersBtn.addEventListener('click', () => { if (transactionsUnsubscribe) transactionsUnsubscribe(); currentFarmerId = null; ui.ledgerView.classList.add('hidden'); ui.farmerListView.classList.remove('hidden'); ui.transactionForm.reset(); });
+        ui.addFarmerBtn.addEventListener('click', () => openFarmerModal());
+        ui.cancelFarmerBtn.addEventListener('click', () => ui.farmerModal.classList.add('hidden'));
+
+        function openFarmerModal(farmer = null) {
+            ui.farmerForm.reset(); document.getElementById('farmer-modal-title').textContent = farmer ? 'Edit Farmer' : 'Add New Farmer';
+            if (farmer) { document.getElementById('farmer-id').value = farmer.id; document.getElementById('farmer-name').value = farmer.name; document.getElementById('farmer-phone').value = farmer.phone; }
+            ui.farmerModal.classList.remove('hidden');
+        }
+
+        ui.farmerForm.addEventListener('submit', async e => {
+            e.preventDefault(); if (!currentUserId) return showToast("You must be logged in.");
+            const id = document.getElementById('farmer-id').value, name = document.getElementById('farmer-name').value, phone = document.getElementById('farmer-phone').value;
+            try {
+                if (id) await updateDoc(doc(db, `artifacts/${appId}/users/${currentUserId}/farmers`, id), { name, phone });
+                else await addDoc(collection(db, `artifacts/${appId}/users/${currentUserId}/farmers`), { name, phone });
+                showToast(id ? "Farmer updated!" : "Farmer added!"); ui.farmerModal.classList.add('hidden');
+            } catch (err) { console.error("Save farmer error:", err); showToast("Error saving farmer."); }
+        });
+
+        function loadFarmers() {
+            if (!currentUserId) return;
+            const q = query(collection(db, `artifacts/${appId}/users/${currentUserId}/farmers`));
+            if (farmersUnsubscribe) farmersUnsubscribe();
+            farmersUnsubscribe = onSnapshot(q, snap => {
+                allFarmers = []; snap.forEach(doc => allFarmers.push({ id: doc.id, ...doc.data() }));
+                allFarmers.sort((a, b) => a.name.localeCompare(b.name));
+                renderFarmers(allFarmers);
+            }, err => { console.error("Load farmers error:", err); showToast("Error loading farmers."); });
+        }
+
+        ui.searchFarmerInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredFarmers = allFarmers.filter(farmer => farmer.name.toLowerCase().includes(searchTerm));
+            renderFarmers(filteredFarmers);
+        });
+
+        function renderFarmers(farmers) {
+            ui.farmerList.innerHTML = '';
+            if (farmers.length === 0) {
+                ui.farmerList.innerHTML = '<p class="text-center text-gray-500 py-4">No farmers found.</p>';
+                return;
+            }
+            farmers.forEach(farmer => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer';
+                div.innerHTML = `<div><p class="font-semibold text-gray-800">${farmer.name}</p><p class="text-sm text-gray-500">${farmer.phone || 'No phone'}</p></div><div class="flex items-center space-x-2"><button class="edit-farmer-btn p-2 text-blue-500"><i data-lucide="edit"></i></button><button class="delete-farmer-btn p-2 text-red-500"><i data-lucide="trash-2"></i></button></div>`;
+                div.addEventListener('click', e => { if (!e.target.closest('button')) showLedgerView(farmer); });
+                div.querySelector('.edit-farmer-btn').addEventListener('click', e => { e.stopPropagation(); openFarmerModal(farmer); });
+                div.querySelector('.delete-farmer-btn').addEventListener('click', async e => { e.stopPropagation(); if (confirm(`Delete ${farmer.name}?`)) deleteFarmer(farmer.id); });
+                ui.farmerList.appendChild(div);
+            });
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        
+        async function deleteFarmer(farmerId) {
+            try {
+                const q = query(collection(db, `artifacts/${appId}/users/${currentUserId}/transactions`), where("farmerId", "==", farmerId));
+                const snap = await getDocs(q); const batch = writeBatch(db); snap.forEach(doc => batch.delete(doc.ref)); await batch.commit();
+                await deleteDoc(doc(db, `artifacts/${appId}/users/${currentUserId}/farmers`, farmerId));
+                showToast("Farmer and transactions deleted.");
+            } catch(e) { console.error("Delete farmer error:", e); showToast("Could not delete farmer."); }
+        }
+
+        function showLedgerView(farmer) {
+            currentFarmerId = farmer.id;
+            document.getElementById('ledger-farmer-name').textContent = farmer.name;
+            document.getElementById('ledger-farmer-phone').textContent = farmer.phone || 'No phone number';
+            ui.farmerListView.classList.add('hidden'); ui.ledgerView.classList.remove('hidden');
+            document.getElementById('transaction-date').valueAsDate = new Date();
+            loadTransactions(currentFarmerId);
+        }
+
+        ui.productType.addEventListener('change', () => toggleProductFields(ui.productType.value));
+        function toggleProductFields(type) {
+            if (type === 'tomato') {
+                ui.chilliFields.classList.add('hidden'); ui.tomatoFields.classList.remove('hidden'); ui.rateLabel.textContent = 'Rate (per Box)';
+            } else {
+                ui.tomatoFields.classList.add('hidden'); ui.chilliFields.classList.remove('hidden'); ui.rateLabel.textContent = 'Rate (per Manumulu)';
+            }
+        }
+
+        ui.transactionForm.addEventListener('submit', async e => {
+            e.preventDefault(); if (!currentUserId || !currentFarmerId) return showToast("No farmer selected.");
+            const productType = ui.productType.value;
+            const date = document.getElementById('transaction-date').value;
+            const rate = parseFloat(document.getElementById('transaction-rate').value);
+            let transactionData = { userId: currentUserId, farmerId: currentFarmerId, date, rate, productType, isPaid: false };
+            
+            if (productType === 'tomato') {
+                const numberOfBoxes = parseInt(document.getElementById('transaction-boxes').value);
+                if (isNaN(numberOfBoxes) || numberOfBoxes <= 0) return showToast("Invalid number of boxes.");
+                transactionData.numberOfBoxes = numberOfBoxes;
+                transactionData.amount = numberOfBoxes * rate;
+            } else {
+                const weights = document.getElementById('transaction-bags').value.split(/[\s,]+/).filter(w => w).map(Number);
+                if (weights.some(isNaN)) return showToast("Invalid weights.");
+                const totalKgs = weights.reduce((s, w) => s + w, 0); const manumulu = totalKgs / MANUMULU_DIVISOR;
+                transactionData = { ...transactionData, weights, numberOfBags: weights.length, totalKgs, manumulu, amount: manumulu * rate };
+            }
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/users/${currentUserId}/transactions`), transactionData);
+                showToast("Transaction saved!"); ui.transactionForm.reset(); toggleProductFields('chilli'); document.getElementById('transaction-date').valueAsDate = new Date();
+            } catch (err) { console.error("Save tx error:", err); showToast("Could not save transaction."); }
+        });
+
+        function loadTransactions(farmerId) {
+            if (!currentUserId) return;
+            const q = query(collection(db, `artifacts/${appId}/users/${currentUserId}/transactions`), where("farmerId", "==", farmerId));
+            if (transactionsUnsubscribe) transactionsUnsubscribe();
+            transactionsUnsubscribe = onSnapshot(q, snap => {
+                currentTransactions = []; snap.forEach(doc => currentTransactions.push({ id: doc.id, ...doc.data() }));
+                currentTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                const unpaidTransactions = currentTransactions.filter(tx => !tx.isPaid);
+                const paidTransactions = currentTransactions.filter(tx => tx.isPaid);
+
+                ui.transactionList.innerHTML = '';
+                if (unpaidTransactions.length > 0) {
+                    unpaidTransactions.forEach(tx => ui.transactionList.appendChild(createTransactionCard(tx)));
+                } else {
+                     ui.transactionList.innerHTML = '<p class="text-center text-gray-500 py-4">No outstanding payments.</p>';
+                }
+
+                if (paidTransactions.length > 0) {
+                    ui.transactionList.innerHTML += '<h4 class="text-md font-semibold text-gray-500 mt-6 border-b pb-2">Paid History</h4>';
+                    paidTransactions.forEach(tx => ui.transactionList.appendChild(createTransactionCard(tx)));
+                }
+
+                updateSummary(unpaidTransactions);
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }, err => { console.error("Load tx error:", err); showToast("Error loading transactions."); });
+        }
+
+        function createTransactionCard(tx) {
+            const div = document.createElement('div');
+            const cardClass = tx.isPaid ? 'opacity-60 bg-gray-50' : 'bg-white';
+            div.className = `p-4 ${cardClass} border rounded-lg shadow-sm`;
+            
+            let detailsHtml = '', productLabel = '';
+            const paidBadge = tx.isPaid ? `<span class="bg-gray-200 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Paid</span>` : '';
+
+            if (tx.productType === 'tomato') {
+                productLabel = `<span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Tomato</span>`;
+                detailsHtml = `<div><span class="font-medium">${tx.numberOfBoxes}</span> Boxes</div>`;
+            } else {
+                productLabel = `<span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Chilli</span>`;
+                detailsHtml = `<div><span class="font-medium">${tx.numberOfBags}</span> Bags</div><div><span class="font-medium">${tx.totalKgs.toFixed(2)}</span> Kgs</div><div><span class="font-medium">${tx.manumulu.toFixed(2)}</span> Manumulu</div>`;
+            }
+            
+            const actionButtons = `
+                ${tx.productType !== 'tomato' ? `<button class="view-weights-btn text-blue-500 text-xs p-1 flex items-center" data-id="${tx.id}"><i data-lucide="eye" class="w-3 h-3 mr-1"></i>Weights</button>` : ''}
+                ${!tx.isPaid ? `<button class="edit-tx-btn text-yellow-500 text-xs p-1 flex items-center" data-id="${tx.id}"><i data-lucide="edit-2" class="w-3 h-3 mr-1"></i>Edit</button>` : ''}
+                <button class="delete-tx-btn text-red-400 text-xs p-1 flex items-center" data-id="${tx.id}"><i data-lucide="trash" class="w-3 h-3 mr-1"></i>Delete</button>
+            `;
+
+            div.innerHTML = `<div class="flex justify-between items-start"><div class="flex-1"><div class="flex items-center gap-2 mb-1"><p class="font-bold text-gray-800">${new Date(tx.date + 'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</p>${productLabel}${paidBadge}</div><p class="text-sm text-gray-600">Rate: ₹${tx.rate.toFixed(2)}</p></div><div class="text-right"><p class="font-bold text-lg text-green-600">₹${tx.amount.toFixed(2)}</p><div class="mt-1 space-x-1 flex items-center justify-end">${actionButtons}</div></div></div><div class="mt-3 pt-3 border-t text-sm grid grid-cols-2 md:grid-cols-4 gap-2 text-center">${detailsHtml}</div>`;
+            
+            div.querySelector('.delete-tx-btn')?.addEventListener('click', e => { if (confirm('Are you sure?')) deleteDoc(doc(db, `artifacts/${appId}/users/${currentUserId}/transactions`, e.currentTarget.dataset.id)); });
+            div.querySelector('.edit-tx-btn')?.addEventListener('click', e => openEditTransactionModal(currentTransactions.find(t => t.id === e.currentTarget.dataset.id)));
+            div.querySelector('.view-weights-btn')?.addEventListener('click', e => openViewWeightsModal(currentTransactions.find(t => t.id === e.currentTarget.dataset.id)));
+
+            return div;
+        }
+
+        function updateSummary(unpaidTransactions) {
+            const totalDue = unpaidTransactions.reduce((s, tx) => s + tx.amount, 0);
+            document.getElementById('summary-amount').textContent = `₹${totalDue.toFixed(2)}`;
+            ui.settleAccountsBtn.disabled = unpaidTransactions.length === 0;
+            ui.settleAccountsBtn.classList.toggle('opacity-50', unpaidTransactions.length === 0);
+        }
+        
+        ui.settleAccountsBtn.addEventListener('click', async () => {
+            const unpaid = currentTransactions.filter(tx => !tx.isPaid);
+            if (unpaid.length === 0) return showToast("No outstanding balance to settle.");
+            const totalDue = unpaid.reduce((s, tx) => s + tx.amount, 0);
+            if (!confirm(`Settle the outstanding balance of ₹${totalDue.toFixed(2)}? This will mark ${unpaid.length} transaction(s) as PAID.`)) return;
+            const batch = writeBatch(db);
+            unpaid.forEach(tx => batch.update(doc(db, `artifacts/${appId}/users/${currentUserId}/transactions`, tx.id), { isPaid: true }));
+            try { await batch.commit(); showToast("Accounts settled successfully!"); } 
+            catch (err) { console.error("Settle error:", err); showToast("Could not settle accounts."); }
+        });
+
+        function openEditTransactionModal(tx) {
+            if (!tx) return;
+            document.getElementById('edit-transaction-id').value = tx.id; document.getElementById('edit-transaction-date').value = tx.date;
+            document.getElementById('edit-transaction-rate').value = tx.rate;
+            document.getElementById('edit-product-type-display').value = tx.productType.charAt(0).toUpperCase() + tx.productType.slice(1);
+            if (tx.productType === 'tomato') {
+                ui.editChilliFields.classList.add('hidden'); ui.editTomatoFields.classList.remove('hidden');
+                ui.editRateLabel.textContent = 'Rate (per Box)'; document.getElementById('edit-transaction-boxes').value = tx.numberOfBoxes;
+            } else {
+                ui.editTomatoFields.classList.add('hidden'); ui.editChilliFields.classList.remove('hidden');
+                ui.editRateLabel.textContent = 'Rate (per Manumulu)'; document.getElementById('edit-transaction-bags').value = tx.weights.join(', ');
+            }
+            ui.editTransactionModal.classList.remove('hidden');
+        }
+        ui.cancelEditTxBtn.addEventListener('click', () => ui.editTransactionModal.classList.add('hidden'));
+
+        ui.editTransactionForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const txId = document.getElementById('edit-transaction-id').value; const originalTx = currentTransactions.find(t => t.id === txId);
+            const date = document.getElementById('edit-transaction-date').value; const rate = parseFloat(document.getElementById('edit-transaction-rate').value);
+            let updatedData = { date, rate };
+
+            if (originalTx.productType === 'tomato') {
+                const numberOfBoxes = parseInt(document.getElementById('edit-transaction-boxes').value);
+                if (isNaN(numberOfBoxes) || numberOfBoxes <= 0) return showToast("Invalid number of boxes.");
+                updatedData.numberOfBoxes = numberOfBoxes; updatedData.amount = numberOfBoxes * rate;
+            } else {
+                const weights = document.getElementById('edit-transaction-bags').value.split(/[\s,]+/).filter(w => w).map(Number);
+                if (weights.some(isNaN)) return showToast("Invalid weights.");
+                const totalKgs = weights.reduce((s, w) => s + w, 0); const manumulu = totalKgs / MANUMULU_DIVISOR;
+                updatedData = { ...updatedData, weights, numberOfBags: weights.length, totalKgs, manumulu, amount: manumulu * rate };
+            }
+            try {
+                await updateDoc(doc(db, `artifacts/${appId}/users/${currentUserId}/transactions`, txId), updatedData);
+                showToast("Transaction updated!"); ui.editTransactionModal.classList.add('hidden');
+            } catch (err) { console.error("Update tx error:", err); showToast("Could not update transaction."); }
+        });
+        
+        function openViewWeightsModal(tx) { if (!tx) return; document.getElementById('weights-display').textContent = tx.weights.join(', '); ui.viewWeightsModal.classList.remove('hidden'); }
+        ui.closeWeightsBtn.addEventListener('click', () => ui.viewWeightsModal.classList.add('hidden'));
+        ui.copyWeightsBtn.addEventListener('click', () => navigator.clipboard.writeText(document.getElementById('weights-display').textContent).then(() => showToast("Weights copied!")));
+        
+        ui.generateSlipBtn.addEventListener('click', () => {
+            const farmerName = document.getElementById('ledger-farmer-name').textContent;
+            if (currentTransactions.length === 0) return showToast("No transactions for slip.");
+            
+            const unpaidTotal = currentTransactions.filter(tx => !tx.isPaid).reduce((sum, tx) => sum + tx.amount, 0);
+            
+            let slipText = `** Full History Slip **\n\nFarmer: ${farmerName}\n--------------------------\n`;
+            currentTransactions.forEach(tx => {
+                const product = tx.productType.charAt(0).toUpperCase() + tx.productType.slice(1);
+                const detail = tx.productType === 'tomato' ? `${tx.numberOfBoxes} Boxes` : `${tx.totalKgs.toFixed(2)} Kgs`;
+                const paidStatus = tx.isPaid ? ' (Paid)' : '';
+                slipText += `Date: ${new Date(tx.date + 'T00:00:00').toLocaleDateString('en-GB')}${paidStatus}\nProduct: ${product}\nDetail: ${detail}\nAmount: ₹${tx.amount.toFixed(2)}\n--------------------------\n`;
+            });
+            slipText += `\n** CURRENT OUTSTANDING: ₹${unpaidTotal.toFixed(2)} **\n\nThank you!`;
+            navigator.clipboard.writeText(slipText).then(() => showToast("Full history slip copied!"), () => showToast("Could not copy slip."));
+        });
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    </script>
+</body>
+</html>
